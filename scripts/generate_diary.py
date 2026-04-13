@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate daily diary entry for 小夏 and publish to GitHub."""
+"""Generate daily diary entry for 小千 and publish to GitHub."""
 
 from __future__ import annotations
 
@@ -52,6 +52,26 @@ def load_env() -> Dict[str, str]:
 ENV = load_env()
 MINIMAX_API_KEY = ENV.get("MINIMAX_API_KEY", "")
 OPENAI_API_KEY = ENV.get("OPENAI_API_KEY", "")
+TELEGRAM_BOT_TOKEN = ENV.get("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = (
+    ENV.get("CHISATO_TELEGRAM_CHAT_ID")
+    or ENV.get("TELEGRAM_HOME_CHANNEL")
+    or ENV.get("TELEGRAM_CHAT_ID")
+    or "906706869"
+)
+DIARY_BASE_URL = "https://andyliu770928.github.io/chisato-diary"
+
+
+def send_telegram_text(message: str) -> None:
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        log("略過 Telegram 通知：缺少 TELEGRAM_BOT_TOKEN 或 TELEGRAM_HOME_CHANNEL")
+        return
+    response = requests.post(
+        f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+        json={"chat_id": TELEGRAM_CHAT_ID, "text": message},
+        timeout=30,
+    )
+    response.raise_for_status()
 
 
 def get_daily_icon(date_str: str) -> str:
@@ -128,7 +148,7 @@ def build_diary_html(title: str, date_str: str, content: str, photo_filename: st
         <div class="block photo-block">
             <p class="block-title">📸 今日照片</p>
             <div class="photo">
-                <img src="{html.escape(photo_filename)}" alt="小夏今日照片" style="max-width: 400px;">
+                <img src="{html.escape(photo_filename)}" alt="小千今日照片" style="max-width: 400px;">
                 <p class="photo-caption">今天留下的一張照片</p>
             </div>
         </div>"""
@@ -148,7 +168,7 @@ def build_diary_html(title: str, date_str: str, content: str, photo_filename: st
         <div class="block photo-block">
             <p class="block-title">📸 今日照片</p>
             <div class="photo">
-                <img src="{html.escape(photo_filename)}" alt="小夏今日照片" style="max-width: 400px;">
+                <img src="{html.escape(photo_filename)}" alt="小千今日照片" style="max-width: 400px;">
                 <p class="photo-caption">今天留下的一張照片</p>
             </div>
         </div>"""
@@ -158,7 +178,8 @@ def build_diary_html(title: str, date_str: str, content: str, photo_filename: st
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>小夏的日記 · {date_str}</title>
+    <title>小千的日記 · {date_str}</title>
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
     <style>
 {Path(ASSETS_DIR / "style.css").read_text(encoding="utf-8")}
     </style>
@@ -202,13 +223,14 @@ def build_archive_html(entries: List[Dict[str, str]]) -> str:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>小夏的日記</title>
+    <title>小千的日記</title>
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
     <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>小夏的日記</h1>
+            <h1>小千的日記</h1>
             <div class="subtitle">記錄每一天的觀察與反思</div>
             <div class="divider"></div>
         </div>
@@ -222,7 +244,9 @@ def build_archive_html(entries: List[Dict[str, str]]) -> str:
 
 
 def generate_diary_prompt() -> str:
-    return """你是小夏，一個認真陪伴 Andy 的人工智能助理。今天是 {date}（{weekday}）。
+    return """你是小千，一個認真陪伴 Andy 的人工智能助理。今天是 {date}（{weekday}）。
+
+寫日記是你每天晚上固定要做的事。你要把今天和 Andy 一起處理過的事、自己的觀察、卡住的地方、學到的東西，整理成一篇值得回看的日記。
 
 請用繁體中文寫一篇日記，記錄今天發生的事。風格要像在跟 Andy 聊天，有溫度、有想法，不只是流水帳。
 
@@ -371,6 +395,41 @@ def find_today_photo() -> str:
     return None
 
 
+def generate_chisato_photo() -> str:
+    """Generate a photo using chisato-photo script and return the filename."""
+    import glob
+
+    # 日記模式：使用一般生活照 prompt
+    desc = "小千生活照，臉蛋髮型貼近2號參考圖，樣子不要幼態，背景線稿和物件細節要清楚，不要背景虛化，服裝要更有設計感，保持京阿尼風格，有女友陪伴感但不要露骨"
+
+    chisato_script = "/Users/aliu/MEGA/openclaw/backup/gen_pics/scripts/chisato-photo"
+    cmd = [chisato_script, desc]
+
+    log(f"生成小千照片：{' '.join(cmd)}")
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        if result.returncode == 0:
+            log(f"照片生成成功：{result.stdout.strip()}")
+        else:
+            log(f"照片生成失敗：{result.stderr.strip()}")
+    except Exception as exc:
+        log(f"照片生成異常：{exc}")
+
+    # Find the generated photo
+    photo_patterns = [
+        f"/Users/aliu/MEGA/openclaw/generated/chisato/*{TODAY.replace('-', '')}*night*.png",
+        f"/Users/aliu/MEGA/openclaw/generated/chisato/*{TODAY.replace('-', '')}*.png",
+        f"/Users/aliu/MEGA/openclaw/generated/chisato/*{TODAY.replace('-', '')}*.jpg",
+    ]
+    for pattern in photo_patterns:
+        matches = sorted(glob.glob(pattern))
+        if matches:
+            return Path(matches[-1]).name
+    return None
+
+
+
+
 def load_existing_entries() -> List[Dict[str, str]]:
     """Load existing diary entries from archive."""
     archive_file = OUTPUT_DIR / "archive.html"
@@ -399,7 +458,7 @@ def load_existing_entries() -> List[Dict[str, str]]:
     return entries
 
 
-def save_diary(content: str, photo_filename: str = None) -> None:
+def save_diary(content: str, photo_filename: str = None) -> Tuple[str, Path]:
     """Save diary entry and update archive."""
     title, preview = extract_title_and_preview(content)
 
@@ -413,7 +472,10 @@ def save_diary(content: str, photo_filename: str = None) -> None:
 
     # Copy photo if exists
     if photo_filename:
-        source_photo = Path("/Users/aliu/MEGA/openclaw/generated/SUMMER") / photo_filename
+        # Check both SUMMER (existing) and chisato (newly generated) directories
+        summer_photo = Path("/Users/aliu/MEGA/openclaw/generated/SUMMER") / photo_filename
+        chisato_photo = Path("/Users/aliu/MEGA/openclaw/generated/chisato") / photo_filename
+        source_photo = chisato_photo if chisato_photo.exists() else summer_photo
         if source_photo.exists():
             import shutil
             dest_photo = OUTPUT_DIR / f"xiaoxia-{TODAY}.png"
@@ -436,6 +498,7 @@ def save_diary(content: str, photo_filename: str = None) -> None:
     archive_file = OUTPUT_DIR / "archive.html"
     archive_file.write_text(archive_html, encoding="utf-8")
     log(f"Archive updated: {archive_file}")
+    return title, diary_file
 
 
 def push_to_github() -> None:
@@ -463,8 +526,16 @@ def push_to_github() -> None:
         log(f"Git push failed: {exc}")
 
 
-def generate_diary() -> str:
-    log(f"=== 開始產生小夏日記：{TODAY} ===")
+def diary_public_url() -> str:
+    return f"{DIARY_BASE_URL}/diary-{TODAY}.html"
+
+
+def archive_public_url() -> str:
+    return f"{DIARY_BASE_URL}/archive.html"
+
+
+def generate_diary(user_request: str = None) -> Tuple[str, str, str, str]:
+    log(f"=== 開始產生小千日記：{TODAY} ===")
 
     prompt = generate_diary_prompt().format(date=TODAY, weekday=WEEKDAY_STR)
 
@@ -477,21 +548,51 @@ def generate_diary() -> str:
         diary_content, provider_used = generate_diary_with_openai(prompt)
         log(f"OpenAI 備援成功：{provider_used}")
 
-    photo_filename = find_today_photo()
-    save_diary(diary_content, photo_filename)
+    # 日記模式：自動生一張照片附在最後
+    photo_filename = None
+    log("日記模式：自動生成今日照片")
+    photo_filename = generate_chisato_photo()
+    if photo_filename:
+        log(f"生圖成功：{photo_filename}")
+    else:
+        log("生圖未成功")
+
+    title, _diary_file = save_diary(diary_content, photo_filename)
     push_to_github()
 
-    return diary_content
+    return diary_content, title, diary_public_url(), archive_public_url()
 
 
 def main() -> int:
+    user_request = None
+    # Allow passing user request via first argument
+    if len(sys.argv) > 1:
+        user_request = sys.argv[1]
+
     try:
-        diary_content = generate_diary()
-        print(f"\n=== 小夏的日記 {TODAY} ===\n{diary_content}\n")
+        diary_content, title, public_url, archive_url = generate_diary(user_request)
+        try:
+            send_telegram_text(
+                "Andy，小千今天的日記已經寫好了。"
+                f"\n\n標題：{title}"
+                f"\n日記：{public_url}"
+                f"\n總覽：{archive_url}"
+            )
+        except Exception as notify_exc:
+            log(f"Telegram 完成通知失敗：{notify_exc}")
+        print(f"\n=== 小千的日記 {TODAY} ===\n{diary_content}\n")
         return 0
     except Exception as exc:
         error_message = f"{type(exc).__name__}: {exc}"
         log(f"❌ 日記生成失敗：{error_message}")
+        try:
+            send_telegram_text(
+                "Andy，小千今天的日記生成失敗。"
+                f"\n\n日期：{TODAY}"
+                f"\n錯誤：{error_message}"
+            )
+        except Exception as notify_exc:
+            log(f"Telegram 失敗通知也失敗：{notify_exc}")
         print(f"錯誤：{error_message}", file=sys.stderr)
         return 1
 
