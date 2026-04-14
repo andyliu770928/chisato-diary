@@ -18,6 +18,7 @@ import requests
 BASE_DIR = Path("/Users/aliu/MEGA/openclaw/diary")
 ASSETS_DIR = BASE_DIR / "assets"
 OUTPUT_DIR = BASE_DIR
+MEMORY_DIR = BASE_DIR / "memory"
 ENV_FILE = Path("/Users/aliu/.hermes/.env")
 TODAY = datetime.now().strftime("%Y-%m-%d")
 WEEKDAY = ["週一", "週二", "週三", "週四", "週五", "週六", "週日"]
@@ -35,6 +36,22 @@ MINIMAX_TEXT_MODELS = [
 def log(message: str) -> None:
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{timestamp}] {message}", flush=True)
+
+
+def load_memory() -> str:
+    """Load today's memory summary from Andy Daily Reflection job."""
+    memory_file = MEMORY_DIR / f"{TODAY}.md"
+    if memory_file.exists():
+        return memory_file.read_text(encoding="utf-8").strip()
+    return ""
+
+
+def load_reflection() -> str:
+    """Load today's reflection from Andy Daily Reflection job."""
+    reflection_file = MEMORY_DIR / f"{TODAY}-reflection.md"
+    if reflection_file.exists():
+        return reflection_file.read_text(encoding="utf-8").strip()
+    return ""
 
 
 def load_env() -> Dict[str, str]:
@@ -242,7 +259,19 @@ def build_archive_html(entries: List[Dict[str, str]]) -> str:
 </body>
 </html>"""
 def generate_diary_prompt(conversation_context: str = "") -> str:
-    ctx_block = f"\n\n## 以下是今天與 Andy 的對話記錄（請嚴格以此為事實依據，不要編造）\n\n{conversation_context}\n\n--- 以上為對話記錄 ---\n" if conversation_context else "\n"
+    # 讀取 Andy Daily Reflection job 寫出的 memory 檔
+    memory = load_memory()
+    reflection = load_reflection()
+
+    ctx_parts = []
+    if memory:
+        ctx_parts.append(f"## 今天的事件摘要\n{memory}")
+    if reflection:
+        ctx_parts.append(f"## Andy 的每日反思\n{reflection}")
+    if conversation_context:
+        ctx_parts.append(f"## 今天與 Andy 的對話記錄\n{conversation_context}")
+
+    ctx_block = ("\n\n" + "\n\n---\n\n".join(ctx_parts) + "\n\n--- 以上為事實依據，請嚴格以此為準，不要編造 ---\n") if ctx_parts else "\n"
 
     # 直接讀取樣式檔，嵌入 prompt（模型沒有檔案系統存取權）
     style_content = ""
