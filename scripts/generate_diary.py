@@ -413,36 +413,45 @@ def find_today_photo() -> str:
 
 
 def generate_chisato_photo() -> str:
-    """Generate a photo using chisato-photo script and return the filename."""
+    """Find today's afternoon photo to attach to diary (no generation needed)."""
     import glob
+    from datetime import datetime
 
-    # 日記模式：使用一般生活照 prompt
-    desc = "小千生活照，臉蛋髮型貼近2號參考圖，樣子不要幼態，背景線稿和物件細節要清楚，不要背景虛化，服裝要更有設計感，保持京阿尼風格，有女友陪伴感但不要露骨"
+    date_str = TODAY.replace("-", "")  # e.g. "20260414"
+    photo_dir = Path("/Users/aliu/MEGA/openclaw/generated/chisato")
 
-    chisato_script = "/Users/aliu/MEGA/openclaw/backup/gen_pics/scripts/chisato-photo"
-    cmd = [chisato_script, desc]
-
-    log(f"生成小千照片：{' '.join(cmd)}")
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-        if result.returncode == 0:
-            log(f"照片生成成功：{result.stdout.strip()}")
-        else:
-            log(f"照片生成失敗：{result.stderr.strip()}")
-    except Exception as exc:
-        log(f"照片生成異常：{exc}")
-
-    # Find the generated photo
-    photo_patterns = [
-        f"/Users/aliu/MEGA/openclaw/generated/chisato/*{TODAY.replace('-', '')}*night*.png",
-        f"/Users/aliu/MEGA/openclaw/generated/chisato/*{TODAY.replace('-', '')}*.png",
-        f"/Users/aliu/MEGA/openclaw/generated/chisato/*{TODAY.replace('-', '')}*.jpg",
+    # Find all photos for today
+    patterns = [
+        f"{photo_dir}/{date_str}-*.png",
+        f"{photo_dir}/{date_str}-*.jpg",
     ]
-    for pattern in photo_patterns:
-        matches = sorted(glob.glob(pattern))
-        if matches:
-            return Path(matches[-1]).name
-    return None
+    candidates = []
+    for pattern in patterns:
+        candidates.extend(sorted(glob.glob(pattern)))
+
+    if not candidates:
+        log("找不到今天的照片")
+        return None
+
+    # Pick the earliest afternoon photo (12:00–18:00), fall back to earliest today
+    def photo_hour(p):
+        try:
+            # filename format: YYYYMMDD-HHMM-minimax.png
+            fn = Path(p).stem  # e.g. "20260414-1503-minimax"
+            time_part = fn.split("-")[1]  # "1503"
+            hour = int(time_part[:2])
+            return hour
+        except Exception:
+            return 99
+
+    afternoon = [p for p in candidates if 12 <= photo_hour(p) <= 18]
+    if afternoon:
+        chosen = afternoon[0]  # earliest afternoon photo
+    else:
+        chosen = candidates[0]  # earliest today
+
+    log(f"日記使用下午照片：{Path(chosen).name}")
+    return Path(chosen).name
 
 
 

@@ -2,34 +2,31 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-LOG_DIR="$SCRIPT_DIR/logs"
-STATUS_FILE="$LOG_DIR/last-run.status"
-OUTPUT_FILE="$LOG_DIR/last-run.out"
-ERROR_FILE="$LOG_DIR/last-run.err"
-PID_FILE="$LOG_DIR/last-run.pid"
-
-mkdir -p "$LOG_DIR"
-
 PYTHON_BIN="${CHISATO_PYTHON_BIN:-$HOME/.hermes/hermes-agent/venv/bin/python}"
 
-# 已在執行中 → 不重複啟動
-if [ -f "$PID_FILE" ]; then
-    OLD_PID=$(cat "$PID_FILE" 2>/dev/null)
-    if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
-        echo "already running (PID $OLD_PID), skip"
-        exit 0
-    fi
-    rm -f "$PID_FILE"
-fi
+# timeout 秒數（macOS 用 perl alarm 實現）
+DIARY_TIMEOUT="${DIARY_TIMEOUT:-300}"
 
-echo "starting at $(date '+%Y-%m-%d %H:%M:%S')" > "$STATUS_FILE"
-echo "running" >> "$STATUS_FILE"
+# 用 perl alarm 實作 timeout：超時會被 SIGALRM 殺掉
+exec perl -e '
+    use strict;
+    use File::Basename;
+    $| = 1;
+    my $timeout = $ARGV[0] // 300;
+    my @cmd = @ARGV[1..$#ARGV];
+    $0 = $cmd[0];  # 程序名稱
 
-# 真正在背景執行，不等結果
-nohup "$PYTHON_BIN" "$SCRIPT_DIR/generate_diary.py" \
-    > "$OUTPUT_FILE" \
-    2> "$ERROR_FILE" &
-echo $! > "$PID_FILE"
-
-echo "launched as background job, PID=$(cat $PID_FILE)"
-exit 0
+    eval {
+        local $SIG{ALRM} = sub { die "alarm\n" };
+        alarm $timeout;
+        exec(@cmd) or die "exec failed: $!\n";
+        alarm 0;
+    };
+    if ($@) {
+        if ($@ eq "alarm\n") {
+            print STDERR "ERROR: command timed out after ${timeout}s\n";
+            exit 124;
+        }
+        exit 1;
+    }
+' "$DIARY_TIMEOUT" "$PYTHON_BIN" "$SCRIPT_DIR/generate_diary.py" "$@"
