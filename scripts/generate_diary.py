@@ -19,9 +19,9 @@ BASE_DIR = Path("/Users/aliu/MEGA/openclaw/diary")
 ASSETS_DIR = BASE_DIR / "assets"
 OUTPUT_DIR = BASE_DIR
 ENV_FILE = Path("/Users/aliu/.hermes/.env")
-TODAY = "2026-04-13"
+TODAY = datetime.now().strftime("%Y-%m-%d")
 WEEKDAY = ["週一", "週二", "週三", "週四", "週五", "週六", "週日"]
-WEEKDAY_STR = "週一"
+WEEKDAY_STR = WEEKDAY[datetime.now().weekday()]
 
 MINIMAX_TEXT_ENDPOINT = "https://api.minimax.io/v1/chat/completions"
 OPENAI_CHAT_ENDPOINT = "https://api.openai.com/v1/chat/completions"
