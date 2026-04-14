@@ -112,6 +112,14 @@ def clean_model_output(text: str) -> str:
 
 def parse_diary_content(content: str) -> List[Tuple[str, str]]:
     """Parse diary content into blocks with titles and bullet points."""
+    # Strip thinking tags and template artifacts first
+    content = re.sub(r"<think>[\s\S]*?</think>", "", content)
+    content = re.sub(r"<\/?think>", "", content, flags=re.IGNORECASE)
+    content = re.sub(r"```[^`]*```", "", content, flags=re.S)
+    content = re.sub(r"^以下是.*$", "", content, flags=re.M)
+    content = re.sub(r"^直接開始寫.*$", "", content, flags=re.M)
+    content = re.sub(r"^={3,}.*$", "", content, flags=re.M)
+
     blocks = []
     current_title = None
     current_items = []
@@ -120,12 +128,15 @@ def parse_diary_content(content: str) -> List[Tuple[str, str]]:
         line = line.strip()
         if not line:
             continue
-        # Check for block title (starts with emoji or specific patterns)
-        title_match = re.match(r"^(🌸|📋|💭|🌙|📸|🎯|📍|💌|🔧|🌐|⛽)(.+)", line)
+        # Skip obvious non-content lines
+        if line.startswith("---") or line.startswith("```"):
+            continue
+        # Check for block title (starts with emoji)
+        title_match = re.match(r"^(🌸|📋|💭|🌙|📸|🎯|📍|💌|🔧|🌐|⛽)\s*(.+)$", line)
         if title_match:
             if current_title and current_items:
                 blocks.append((current_title, current_items))
-            current_title = title_match.group(1) + title_match.group(2).strip()
+            current_title = title_match.group(1) + " " + title_match.group(2).strip()
             current_items = []
         elif line.startswith("- ") or line.startswith("• "):
             item = line[2:].strip()
@@ -135,10 +146,9 @@ def parse_diary_content(content: str) -> List[Tuple[str, str]]:
             item = line[2:].strip()
             if item:
                 current_items.append(item)
-        else:
-            # Plain text, could be part of current section or opening
-            if current_items:
-                current_items.append(line)
+        elif current_items:
+            # Plain text continuation of current bullet
+            current_items.append(line)
 
     if current_title and current_items:
         blocks.append((current_title, current_items))
@@ -403,34 +413,44 @@ def generate_diary_with_openai(prompt: str) -> Tuple[str, str]:
 
 def extract_title_and_preview(content: str) -> Tuple[str, str]:
     """Extract first meaningful title and preview from diary content."""
-    lines = content.split("\n")
+    # Remove thinking tags and other non-content markers first
+    content = re.sub(r"<think>[\s\S]*?</think>", "", content)
+    content = re.sub(r"<\/?think>", "", content, flags=re.IGNORECASE)
+    content = re.sub(r"```[^"]*```", "", content, flags=re.S)
+    content = re.sub(r"^以下是.*$", "", content, flags=re.M)
+    content = re.sub(r"^直接開始寫.*$", "", content, flags=re.M)
+    content = re.sub(r"^.+：$", "", content, flags=re.M)  # Remove label-only lines
+    content = re.sub(r"^={3,}.*$", "", content, flags=re.M)  # Remove separators
+
+    lines = [l.strip() for l in content.split("\n") if l.strip()]
     title = None
     preview_lines = []
 
+    # Only match block titles that start with emoji and have actual Chinese content
+    emoji_blocks = re.compile(r"^(🌸|📋|💭|🌙|📸|🎯|📍|💌|🔧|🌐|⛽)\s*(.+)$")
+
     for line in lines:
-        line = line.strip()
-        if not line:
-            continue
-        # Skip emoji-only block titles
-        if re.match(r"^(🌸|📋|💭|🌙|📸|🎯|📍|💌|🔧|🌐|⛽)\s*.+", line):
-            if not title:
-                # Extract title from first block
-                match = re.match(r"^(🌸|📋|💭|🌙|📸|🎯|📍|💌|🔧|🌐|⛽)\s*(.+)", line)
-                if match:
-                    title = match.group(2).strip()
-        elif not line.startswith("- ") and not line.startswith("• "):
-            if not title:
-                title = line[:30]
-            else:
-                preview_lines.append(line)
+        m = emoji_blocks.match(line)
+        if m:
+            if not title and m.group(2).strip():
+                title = m.group(2).strip()
         elif line.startswith("- ") or line.startswith("• "):
             item = line[2:].strip()
             if item and len(preview_lines) < 2:
-                preview_lines.append(item)
+                # Only add Chinese content to preview
+                if re.search(r"[\u4e00-\u9fff]", item):
+                    preview_lines.append(item)
+        elif not title and re.search(r"[\u4e00-\u9fff]", line):
+            # Plain text line with Chinese, no emoji - might be opening paragraph
+            if len(line) > 5:
+                title = line[:40]
+        elif title and not line.startswith("-"):
+            if len(preview_lines) < 2 and re.search(r"[\u4e00-\u9fff]", line):
+                preview_lines.append(line)
 
-    preview = " ".join(preview_lines[:2]) if preview_lines else content[:80]
     if not title:
         title = "今天的點點滴滴"
+    preview = " ".join(preview_lines[:2]) if preview_lines else content[:80]
     return title, preview
 
 
@@ -544,15 +564,17 @@ def save_diary(content: str, photo_filename: str = None) -> Tuple[str, Path]:
             shutil.copy(source_photo, dest_photo)
             log(f"Photo copied: {dest_photo}")
 
-    # Update archive
+    # Update archive: replace existing entry for this date, or add new at top
     entries = load_existing_entries()
 
-    # Add new entry at the top
     new_entry = {
         "date": TODAY,
         "title": title,
         "preview": preview,
     }
+
+    # Remove any existing entry with the same date to avoid duplicates
+    entries = [e for e in entries if e["date"] != TODAY]
     entries.insert(0, new_entry)
 
     # Rebuild archive
