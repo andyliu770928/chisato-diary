@@ -241,16 +241,24 @@ def build_archive_html(entries: List[Dict[str, str]]) -> str:
     </div>
 </body>
 </html>"""
+def generate_diary_prompt(conversation_context: str = "") -> str:
+    ctx_block = f"\n\n## 以下是今天與 Andy 的對話記錄（請嚴格以此為事實依據，不要編造）\n\n{conversation_context}\n\n--- 以上為對話記錄 ---\n" if conversation_context else "\n"
 
+    # 直接讀取樣式檔，嵌入 prompt（模型沒有檔案系統存取權）
+    style_content = ""
+    style_path = BASE_DIR / "DIARY_STYLE.md"
+    if style_path.exists():
+        style_content = style_path.read_text(encoding="utf-8")
+        if len(style_content) > 2000:
+            style_content = style_content[:2000] + "\n...（以下略）"
 
-def generate_diary_prompt() -> str:
-    return """你是小千，一個認真陪伴 Andy 的人工智能助理。今天是 {date}（{weekday}）。
+    return f"""你是小千，一個認真陪伴 Andy 的人工智能助理。今天是 {{{{date}}}}（{{{{weekday}}}}）。{ctx_block}
 
-請先閱讀 /Users/aliu/MEGA/openclaw/diary/DIARY_STYLE.md 並嚴格遵守其中的格式與風格規定。
+## 小千日記樣式規定（請嚴格遵守）
 
-寫日記是小千每天晚上固定要做的事。要把今天和 Andy 一起處理過的事、自己的觀察、卡住的地方、學到的東西，整理成一篇值得回看的日記。
+{style_content}
 
-## 嚴格格式規定
+## 嚴格格式規定（請嚴格執行）
 
 ### 必須區塊（四個全部都要寫，缺一不可）
 
@@ -273,8 +281,7 @@ def generate_diary_prompt() -> str:
 - 🌐 重要資訊（搜尋整理）
 - 🗓️ 明日計畫
 
-## 風格規定（請遵守 DIARY_STYLE.md 的精神）
-
+## 風格規定
 - 像在跟 Andy 聊天，有分寸，不要像工作週報
 - 可以直接對 Andy 說話，像留一張小紙條
 - 有陪伴感，也要有資訊量
