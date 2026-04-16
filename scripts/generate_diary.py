@@ -416,7 +416,7 @@ def extract_title_and_preview(content: str) -> Tuple[str, str]:
     # Remove thinking tags and other non-content markers first
     content = re.sub(r"<think>[\s\S]*?</think>", "", content)
     content = re.sub(r"<\/?think>", "", content, flags=re.IGNORECASE)
-    content = re.sub(r"```[^"]*```", "", content, flags=re.S)
+    content = re.sub(r"```[\s\S]*?```", "", content, flags=re.S)
     content = re.sub(r"^以下是.*$", "", content, flags=re.M)
     content = re.sub(r"^直接開始寫.*$", "", content, flags=re.M)
     content = re.sub(r"^.+：$", "", content, flags=re.M)  # Remove label-only lines

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>ai.chisato.diary</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/aliu/MEGA/openclaw/diary/scripts/run_diary.sh</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/aliu/MEGA/openclaw/diary</string>
+
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>22</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/aliu/.hermes/hermes-agent/venv/bin:/Users/aliu/.nvm/versions/node/v24.14.1/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>CHISATO_PYTHON_BIN</key>
+    <string>/Users/aliu/.hermes/hermes-agent/venv/bin/python</string>
+    <key>CHISATO_ENV_FILE</key>
+    <string>/Users/aliu/.hermes/.env</string>
+    <key>HOME</key>
+    <string>/Users/aliu</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/aliu/MEGA/openclaw/diary/logs/launchd.out.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/aliu/MEGA/openclaw/diary/logs/launchd.err.log</string>
+</dict>
+</plist>
