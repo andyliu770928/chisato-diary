@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import html
 import json
+import os
 import re
 import subprocess
 import sys
@@ -20,9 +21,7 @@ ASSETS_DIR = BASE_DIR / "assets"
 OUTPUT_DIR = BASE_DIR
 MEMORY_DIR = BASE_DIR / "memory"
 ENV_FILE = Path("/Users/aliu/.hermes/.env")
-TODAY = datetime.now().strftime("%Y-%m-%d")
 WEEKDAY = ["週一", "週二", "週三", "週四", "週五", "週六", "週日"]
-WEEKDAY_STR = WEEKDAY[datetime.now().weekday()]
 
 MINIMAX_TEXT_ENDPOINT = "https://api.minimax.io/v1/chat/completions"
 OPENAI_CHAT_ENDPOINT = "https://api.openai.com/v1/chat/completions"
@@ -38,18 +37,49 @@ def log(message: str) -> None:
     print(f"[{timestamp}] {message}", flush=True)
 
 
+def resolve_target_date(raw_date: str | None = None) -> datetime:
+    candidate = (
+        (raw_date or "").strip()
+        or os.environ.get("CHISATO_DIARY_DATE", "").strip()
+        or datetime.now().strftime("%Y-%m-%d")
+    )
+    for fmt in ("%Y-%m-%d", "%Y%m%d"):
+        try:
+            return datetime.strptime(candidate, fmt)
+        except ValueError:
+            continue
+    raise ValueError(f"Invalid diary date: {candidate}")
+
+
+TARGET_DT = resolve_target_date()
+TARGET_DATE = TARGET_DT.strftime("%Y-%m-%d")
+TARGET_DATE_COMPACT = TARGET_DT.strftime("%Y%m%d")
+WEEKDAY_STR = WEEKDAY[TARGET_DT.weekday()]
+
+
+def resolve_memory_file(suffix: str = "") -> Path | None:
+    candidates = [
+        MEMORY_DIR / f"{TARGET_DATE}{suffix}",
+        MEMORY_DIR / f"{TARGET_DATE_COMPACT}{suffix}",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return None
+
+
 def load_memory() -> str:
-    """Load today's memory summary from Andy Daily Reflection job."""
-    memory_file = MEMORY_DIR / f"{TODAY}.md"
-    if memory_file.exists():
+    """Load target date memory summary from Andy Daily Reflection job."""
+    memory_file = resolve_memory_file(".md")
+    if memory_file and memory_file.exists():
         return memory_file.read_text(encoding="utf-8").strip()
     return ""
 
 
 def load_reflection() -> str:
-    """Load today's reflection from Andy Daily Reflection job."""
-    reflection_file = MEMORY_DIR / f"{TODAY}-reflection.md"
-    if reflection_file.exists():
+    """Load target date reflection from Andy Daily Reflection job."""
+    reflection_file = resolve_memory_file("-reflection.md")
+    if reflection_file and reflection_file.exists():
         return reflection_file.read_text(encoding="utf-8").strip()
     return ""
 
@@ -159,7 +189,7 @@ def parse_diary_content(content: str) -> List[Tuple[str, str]]:
 def build_diary_html(title: str, date_str: str, content: str, photo_filename: str = None) -> str:
     """Build diary HTML page."""
     date_display = format_date(date_str)
-    weekday_display = WEEKDAY_STR
+    weekday_display = WEEKDAY[datetime.strptime(date_str, "%Y-%m-%d").weekday()]
     icon = get_daily_icon(date_str)
 
     blocks = parse_diary_content(content)
@@ -457,8 +487,8 @@ def extract_title_and_preview(content: str) -> Tuple[str, str]:
 def find_today_photo() -> str:
     """Find today's photo from generated directory."""
     photo_patterns = [
-        f"/Users/aliu/MEGA/openclaw/generated/SUMMER/*{TODAY.replace('-', '')}*night*.png",
-        f"/Users/aliu/MEGA/openclaw/generated/SUMMER/*{TODAY.replace('-', '')}*.png",
+        f"/Users/aliu/MEGA/openclaw/generated/SUMMER/*{TARGET_DATE_COMPACT}*night*.png",
+        f"/Users/aliu/MEGA/openclaw/generated/SUMMER/*{TARGET_DATE_COMPACT}*.png",
     ]
     import glob
     for pattern in photo_patterns:
@@ -471,9 +501,8 @@ def find_today_photo() -> str:
 def generate_chisato_photo() -> str:
     """Find today's afternoon photo to attach to diary (no generation needed)."""
     import glob
-    from datetime import datetime
 
-    date_str = TODAY.replace("-", "")  # e.g. "20260414"
+    date_str = TARGET_DATE_COMPACT
     photo_dir = Path("/Users/aliu/MEGA/openclaw/generated/chisato")
 
     # Find all photos for today
@@ -545,10 +574,10 @@ def save_diary(content: str, photo_filename: str = None) -> Tuple[str, Path]:
     title, preview = extract_title_and_preview(content)
 
     # Generate diary HTML
-    diary_html = build_diary_html(title, TODAY, content, photo_filename)
+    diary_html = build_diary_html(title, TARGET_DATE, content, photo_filename)
 
     # Save diary file
-    diary_file = OUTPUT_DIR / f"diary-{TODAY}.html"
+    diary_file = OUTPUT_DIR / f"diary-{TARGET_DATE}.html"
     diary_file.write_text(diary_html, encoding="utf-8")
     log(f"Diary saved: {diary_file}")
 
@@ -560,7 +589,7 @@ def save_diary(content: str, photo_filename: str = None) -> Tuple[str, Path]:
         source_photo = chisato_photo if chisato_photo.exists() else summer_photo
         if source_photo.exists():
             import shutil
-            dest_photo = OUTPUT_DIR / f"xiaoxia-{TODAY}.png"
+            dest_photo = OUTPUT_DIR / f"xiaoxia-{TARGET_DATE}.png"
             shutil.copy(source_photo, dest_photo)
             log(f"Photo copied: {dest_photo}")
 
@@ -568,13 +597,13 @@ def save_diary(content: str, photo_filename: str = None) -> Tuple[str, Path]:
     entries = load_existing_entries()
 
     new_entry = {
-        "date": TODAY,
+        "date": TARGET_DATE,
         "title": title,
         "preview": preview,
     }
 
     # Remove any existing entry with the same date to avoid duplicates
-    entries = [e for e in entries if e["date"] != TODAY]
+    entries = [e for e in entries if e["date"] != TARGET_DATE]
     entries.insert(0, new_entry)
 
     # Rebuild archive
@@ -597,7 +626,7 @@ def push_to_github() -> None:
         if diff_result.returncode != 0:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
             subprocess.run(
-                ["git", "commit", "-m", f"Diary: {TODAY}\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"],
+                ["git", "commit", "-m", f"Diary: {TARGET_DATE}\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"],
                 cwd=OUTPUT_DIR,
                 check=True,
                 capture_output=True,
@@ -611,7 +640,7 @@ def push_to_github() -> None:
 
 
 def diary_public_url() -> str:
-    return f"{DIARY_BASE_URL}/diary-{TODAY}.html"
+    return f"{DIARY_BASE_URL}/diary-{TARGET_DATE}.html"
 
 
 def archive_public_url() -> str:
@@ -619,9 +648,9 @@ def archive_public_url() -> str:
 
 
 def generate_diary(user_request: str = None) -> Tuple[str, str, str, str]:
-    log(f"=== 開始產生小千日記：{TODAY} ===")
+    log(f"=== 開始產生小千日記：{TARGET_DATE} ===")
 
-    prompt = generate_diary_prompt().format(date=TODAY, weekday=WEEKDAY_STR)
+    prompt = generate_diary_prompt().format(date=TARGET_DATE, weekday=WEEKDAY_STR)
 
     provider_used = ""
     try:
@@ -664,7 +693,7 @@ def main() -> int:
             )
         except Exception as notify_exc:
             log(f"Telegram 完成通知失敗：{notify_exc}")
-        print(f"\n=== 小千的日記 {TODAY} ===\n{diary_content}\n")
+        print(f"\n=== 小千的日記 {TARGET_DATE} ===\n{diary_content}\n")
         return 0
     except Exception as exc:
         error_message = f"{type(exc).__name__}: {exc}"
@@ -672,7 +701,7 @@ def main() -> int:
         try:
             send_telegram_text(
                 "Andy，小千今天的日記生成失敗。"
-                f"\n\n日期：{TODAY}"
+                f"\n\n日期：{TARGET_DATE}"
                 f"\n錯誤：{error_message}"
             )
         except Exception as notify_exc:
