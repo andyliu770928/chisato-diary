@@ -572,9 +572,10 @@ def load_existing_entries() -> List[Dict[str, str]]:
 def save_diary(content: str, photo_filename: str = None) -> Tuple[str, Path]:
     """Save diary entry and update archive."""
     title, preview = extract_title_and_preview(content)
+    published_photo_filename = f"xiaoxia-{TARGET_DATE}.png" if photo_filename else None
 
     # Generate diary HTML
-    diary_html = build_diary_html(title, TARGET_DATE, content, photo_filename)
+    diary_html = build_diary_html(title, TARGET_DATE, content, published_photo_filename)
 
     # Save diary file
     diary_file = OUTPUT_DIR / f"diary-{TARGET_DATE}.html"
@@ -589,7 +590,7 @@ def save_diary(content: str, photo_filename: str = None) -> Tuple[str, Path]:
         source_photo = chisato_photo if chisato_photo.exists() else summer_photo
         if source_photo.exists():
             import shutil
-            dest_photo = OUTPUT_DIR / f"xiaoxia-{TARGET_DATE}.png"
+            dest_photo = OUTPUT_DIR / published_photo_filename
             shutil.copy(source_photo, dest_photo)
             log(f"Photo copied: {dest_photo}")
 

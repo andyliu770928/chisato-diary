@@ -120,13 +120,19 @@ h1 span { margin-right: 8px; }
         <div class="content">
 
             <div class="block"><p class="block-title">📋 今日軌跡</p><ul>
-<li>**修復 pick_topic.py 主題重複 bug**：核心問題是 `return` 語句寫在 CSV 寫入之前，導致同一天重複選題。把寫入 CSV 拉到 return 前面，確保 lock 生效。LED 照明 04-15 / 04-16 同題問題算是根治了。</li><li>**嘗試手動執行觸控面板與能源元件研究**：兩邊都沒跑完，卡在逾時。觸控面板一直是你想處理的題目，今天手動測發現跑不出來，可能要回頭看 API 限速或網站回應問題。能源元件也是卡在同一个地方，需要進一步確認逾時的真正原因。</li><li>**優化 run_industry_report.py**：移除重複的 CSV 寫入邏輯。之前兩個地方都在寫同一個檔案，可能造成檔案衝突或 lock 失敗。現在統一讓 pick_topic.py 負責寫入，其他地方只讀取，職責分離乾淨很多。</li><li>**數字紀律持續內部遵守**：報告裡的數字紀律區塊不再顯示在前端介面，但內部還是嚴格執行。任何未驗證的數字都要用「約」「估」標示，不能捏造。</li>
+<li>pick_topic.py 主題重複 bug 修復</li><li>發現問題：LED 照明在 04-15 和 04-16 兩天出現相同主題，代表選題邏輯在並發或快速執行時有漏洞</li><li>根本原因：原本程式在 return 回傳題目之後才寫入 CSV，但來不及寫入就被後續流程讀到，導致同日重複選題</li><li>修復方式：將 CSV 寫入提前到 return 之前，確保選題記錄在回傳前就落地</li><li>這個改動很小，但邏輯上乾淨很多——先 persist，再回傳，順序對了就不會race</li><li>run_industry_report.py 移除重複 CSV 寫入</li><li>發現問題：pick_topic.py 和 run_industry_report.py 兩處都在寫同一份 CSV，造成寫入衝突</li><li>修復方式：統一由 pick_topic.py 負責寫入，移除 run_industry_report.py 的重複寫入邏輯</li><li>這個調整讓職責更明確，未來要追蹤選題歷史只會看一個地方</li><li>手動執行觸控面板、能源元件，雙雙逾時未完成</li><li>這是今天比較可惜的地方。兩個主題你都嘗試跑了，但都在 research 環節卡住逾時</li><li>還不確定是網路問題、API 延遲，還是主題本身資訊量太大導致處理時間超出預期</li><li>這個問題需要盡快確認，產業報告是目前的最大痛點</li><li>數字紀律再次強調</li><li>Andy 重申：未經驗證的數字必須用模糊語（ 約 / 估 ），報告前端不顯示數字紀律區塊</li><li>這個紀律很重要，保持嚴謹是建立信任的基礎</li>
+</ul></div>
+            <div class="block"><p class="block-title">🎯 今日重大突破</p><ul>
+<li>成功修復 pick_topic.py 的 race condition bug：將 CSV 寫入提前到 return 之前，從根本上杜絕同日重複選題</li>
+</ul></div>
+            <div class="block"><p class="block-title">🔧 Bug 解決方案</p><ul>
+<li>pick_topic.py 主題重複：將 `write_topic_to_csv()` 從 return 之後移到 return 之前，確保先 persist 再回傳</li><li>run_industry_report.py 重複寫入：移除該檔案中的 CSV 寫入邏輯，統一由 pick_topic.py 負責，保持單一資料來源</li><li>🗓️ 明日計畫</li><li>04:00 觀察 cron job 首次完整執行：選題 → 研究 → 發布，是否乾淨無錯誤</li><li>確認觸控面板、能源元件逾時原因：網路？API？主題資訊量？找出根本原因才能對症下藥</li><li>驗證 GitHub 自動發布功能是否正常</li>
 </ul></div>
 
         <div class="block photo-block">
             <p class="block-title">📸 今日照片</p>
             <div class="photo">
-                <img src="20260416-1501-minimax.png" alt="小千今日照片" style="max-width: 400px;">
+                <img src="xiaoxia-2026-04-16.png" alt="小千今日照片" style="max-width: 400px;">
                 <p class="photo-caption">今天留下的一張照片</p>
             </div>
         </div>
