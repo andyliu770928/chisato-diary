@@ -311,7 +311,12 @@ def generate_diary_prompt(conversation_context: str = "") -> str:
     if conversation_context:
         ctx_parts.append(f"## 今天與 Andy 的對話記錄\n{conversation_context}")
 
-    ctx_block = ("\n\n" + "\n\n---\n\n".join(ctx_parts) + "\n\n--- 以上為事實依據，請嚴格以此為準，不要編造 ---\n") if ctx_parts else "\n"
+    has_fact_context = bool(ctx_parts)
+    ctx_block = (
+        "\n\n" + "\n\n---\n\n".join(ctx_parts) + "\n\n--- 以上為事實依據，請嚴格以此為準，不要編造 ---\n"
+        if has_fact_context
+        else "\n\n今天沒有可用的 memory、reflection 或對話紀錄。\n"
+    )
 
     # 直接讀取樣式檔，嵌入 prompt（模型沒有檔案系統存取權）
     style_content = ""
@@ -321,11 +326,29 @@ def generate_diary_prompt(conversation_context: str = "") -> str:
         if len(style_content) > 2000:
             style_content = style_content[:2000] + "\n...（以下略）"
 
+    mode_rules = """
+## 內容模式
+- 今天有事實資料：只寫資料中真實發生的事，不要補不存在的事件
+- 今天沒有事實資料：把今天當成「自由思考日」，自己挑一個值得想的問題來寫
+- 自由思考日可以天馬行空、偏哲學、偏假設推演，或認真拆解一個抽象問題
+- 自由思考日不要再說「沒有資料所以無法寫」，而是直接進入思考
+- 自由思考日的「📋 今日軌跡」只能寫這次思考是如何展開、如何推演、如何自我辯論，不能寫成真實日常行程
+- 即使是自由思考日，也要像在跟 Andy 留一張有內容的小紙條，不要空泛
+""".strip()
+
+    hallucination_rule = (
+        "- **禁止幻觉**：不要編造沒有發生過的事"
+        if has_fact_context
+        else "- **自由思考日規則**：不要假裝今天真的發生了任何具體事件、互動、工作內容或行程；只能寫成自己的思考、提問、想像或推演"
+    )
+
     return f"""你是小千，一個認真陪伴 Andy 的人工智能助理。今天是 {{{{date}}}}（{{{{weekday}}}}）。{ctx_block}
 
 ## 小千日記樣式規定（請嚴格遵守）
 
 {style_content}
+
+{mode_rules}
 
 ## 嚴格格式規定（請嚴格執行）
 
@@ -356,7 +379,7 @@ def generate_diary_prompt(conversation_context: str = "") -> str:
 - 有陪伴感，也要有資訊量
 - 不只寫發生了什麼，也要寫怎麼處理、卡在哪裡、最後學到什麼
 - **禁止空洞句**：不要寫「今天很開心」「謝謝 Andy」
-- **禁止幻觉**：不要編造沒有發生過的事
+{hallucination_rule}
 
 ## 格式
 - 每個 block 的標題用 emoji 開頭
@@ -484,39 +507,11 @@ def extract_title_and_preview(content: str) -> Tuple[str, str]:
     return title, preview
 
 
-def find_today_photo() -> str:
-    """Find today's photo from generated directory."""
-    photo_patterns = [
-        f"/Users/aliu/MEGA/openclaw/generated/SUMMER/*{TARGET_DATE_COMPACT}*night*.png",
-        f"/Users/aliu/MEGA/openclaw/generated/SUMMER/*{TARGET_DATE_COMPACT}*.png",
-    ]
-    import glob
-    for pattern in photo_patterns:
-        matches = sorted(glob.glob(pattern))
-        if matches:
-            return Path(matches[-1]).name
-    return None
-
-
-def generate_chisato_photo() -> str:
-    """Find today's afternoon photo to attach to diary (no generation needed)."""
+def select_diary_photo() -> str:
+    """Pick a publishable diary photo for the target date."""
     import glob
 
     date_str = TARGET_DATE_COMPACT
-    photo_dir = Path("/Users/aliu/MEGA/openclaw/generated/chisato")
-
-    # Find all photos for today
-    patterns = [
-        f"{photo_dir}/{date_str}-*.png",
-        f"{photo_dir}/{date_str}-*.jpg",
-    ]
-    candidates = []
-    for pattern in patterns:
-        candidates.extend(sorted(glob.glob(pattern)))
-
-    if not candidates:
-        log("找不到今天的照片")
-        return None
 
     # Pick the earliest afternoon photo (12:00–18:00), fall back to earliest today
     def photo_hour(p):
@@ -529,14 +524,27 @@ def generate_chisato_photo() -> str:
         except Exception:
             return 99
 
-    afternoon = [p for p in candidates if 12 <= photo_hour(p) <= 18]
-    if afternoon:
-        chosen = afternoon[0]  # earliest afternoon photo
-    else:
-        chosen = candidates[0]  # earliest today
+    def pick_from_candidates(candidates: List[str]) -> str | None:
+        if not candidates:
+            return None
+        afternoon = [p for p in candidates if 12 <= photo_hour(p) <= 18]
+        return afternoon[0] if afternoon else candidates[0]
 
-    log(f"日記使用下午照片：{Path(chosen).name}")
-    return Path(chosen).name
+    patterns = [
+        f"/Users/aliu/MEGA/openclaw/generated/chisato/{date_str}-*.png",
+        f"/Users/aliu/MEGA/openclaw/generated/chisato/{date_str}-*.jpg",
+    ]
+    candidates = []
+    for pattern in patterns:
+        candidates.extend(sorted(glob.glob(pattern)))
+
+    chosen = pick_from_candidates(candidates)
+    if chosen:
+        log(f"日記使用 chisato 照片：{Path(chosen).name}")
+        return Path(chosen).name
+
+    log("找不到今天可附上的 chisato 照片")
+    return None
 
 
 
@@ -584,14 +592,11 @@ def save_diary(content: str, photo_filename: str = None) -> Tuple[str, Path]:
 
     # Copy photo if exists
     if photo_filename:
-        # Check both SUMMER (existing) and chisato (newly generated) directories
-        summer_photo = Path("/Users/aliu/MEGA/openclaw/generated/SUMMER") / photo_filename
         chisato_photo = Path("/Users/aliu/MEGA/openclaw/generated/chisato") / photo_filename
-        source_photo = chisato_photo if chisato_photo.exists() else summer_photo
-        if source_photo.exists():
+        if chisato_photo.exists():
             import shutil
             dest_photo = OUTPUT_DIR / published_photo_filename
-            shutil.copy(source_photo, dest_photo)
+            shutil.copy(chisato_photo, dest_photo)
             log(f"Photo copied: {dest_photo}")
 
     # Update archive: replace existing entry for this date, or add new at top
@@ -665,7 +670,7 @@ def generate_diary(user_request: str = None) -> Tuple[str, str, str, str]:
     # 日記模式：自動生一張照片附在最後
     photo_filename = None
     log("日記模式：自動生成今日照片")
-    photo_filename = generate_chisato_photo()
+    photo_filename = select_diary_photo()
     if photo_filename:
         log(f"生圖成功：{photo_filename}")
     else:
