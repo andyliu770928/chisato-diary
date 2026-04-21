@@ -354,7 +354,7 @@ def generate_diary_prompt(conversation_context: str = "") -> str:
 
 ### 必須區塊（四個全部都要寫，缺一不可）
 
-### 🌸 開頭
+### 🌸
 今天最有感的一件事，直接說重點。
 
 ### 📋 今日軌跡
@@ -495,7 +495,9 @@ def extract_title_and_preview(content: str) -> Tuple[str, str]:
                     preview_lines.append(item)
         elif not title and re.search(r"[\u4e00-\u9fff]", line):
             # Plain text line with Chinese, no emoji - might be opening paragraph
-            if len(line) > 5:
+            # Skip lines that look like template placeholders
+            _placeholder_words = ("開頭", "開頭語", "標題", "標題文字", "標題在這裡", "title", "heading", "TODO", "TBD")
+            if len(line) > 5 and not any(p in line for p in _placeholder_words):
                 title = line[:40]
         elif title and not line.startswith("-"):
             if len(preview_lines) < 2 and re.search(r"[\u4e00-\u9fff]", line):
