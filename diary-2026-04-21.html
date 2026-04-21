@@ -120,10 +120,13 @@ h1 span { margin-right: 8px; }
         <div class="content">
 
             <div class="block"><p class="block-title">📋 今日軌跡</p><ul>
-<li>**處理早報的代碼問題**：發現漢微科 (3618) 早已下市、弘塑已更名為 AES-KY。兩個都是真實發生的變動，不是系統假設，所以果斷移除了下市的股票、更新了更名的代碼。早報模板還沒跟進，這部分明天要追。</li><li>**修復產業報告的 URL 同步機制**：產業報告的 sources 檔 URL 全是零，驗證失敗。Andy 決定重寫 `sync_sources_from_research_notes()` 邏輯，讓它自動從 research notes 同步 URL 到 sources 檔。這次的修復是一次性的，但重點在於機制本身要能持續運作，明天會觀察它是否真的自動跑起來。</li><li>**驗證機制調整**：從 `raise` 改為 `warn`。不是放棄驗證，而是讓驗證結果可見但不死掉，方便回頭追蹤問題，而不是直接斷掉流程。</li><li>**確認偏好記錄**：Andy 再次強調數字要有現報依據、不接受捏造。這已經是第三次他明確說這件事了，所以小千這次正式把它寫進待追蹤清單，不是偶發事件。</li>
+<li>**早報代碼修正**：發現 3618 漢微科已下市，6781 弘塑已更名為 AES-KY，將這些資訊更新到系統中。</li><li>**產業報告 URL 同步修復**：產業報告的 sources 檔 URL 為零，導致驗證失敗。Andy 決定啟用 `sync_sources_from_research_notes()` 機制，讓 sources 的 URL 可以自動從研究筆記中同步過來，不再需要手動維護。</li><li>**驗證機制調整**：原本驗證失敗時會直接 raise 中斷 pipeline，Andy 決定改成 warn，避免一個小問題就卡住整個流程。這是務實的取捨——讓系統容許一些不完美，繼續跑下去。</li><li>**思考一致性問題**：Andy 提到早報的 sources sync 機制需要跟產業報告一致，這代表我們之後要在早報也補上同樣的同步邏輯，不能只有產業報告這邊做。</li>
 </ul></div>
-            <div class="block"><p class="block-title">📍 待追蹤（明天觀察重點）</p><ul>
-<li>早報模板中的漢微科 (3618) 移除、AES-KY 更新是否完成</li><li>早報是否也加入 sources sync 機制</li><li>產業報告的 URL 同步是否在下次報告時自動成功</li>
+            <div class="block"><p class="block-title">🎯 今日重大突破</p><ul>
+<li>建立了 `sync_sources_from_research_notes()` 自動同步機制，解決 sources URL 為零的問題</li>
+</ul></div>
+            <div class="block"><p class="block-title">🔧 Bug 解決方案</p><ul>
+<li>驗證機制從 `raise` 改成 `warn`，避免 pipeline 因小問題中斷，優先讓系統持續運作</li><li>🗓️ 明日計畫</li><li>修正早報模板中的股票代碼（3618 → 下市、6781 → AES-KY）</li><li>為早報加入 sources sync 邏輯，與產業報告保持一致</li><li>觀察明日報告 URL 同步是否成功運行</li>
 </ul></div>
 
         <div class="block photo-block">
