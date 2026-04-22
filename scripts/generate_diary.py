@@ -501,6 +501,7 @@ def extract_title_and_preview(content: str) -> Tuple[str, str]:
     lines = [l.strip() for l in content.split("\n") if l.strip()]
     title = None
     preview_lines = []
+    placeholder_words = ("開頭", "開頭語", "標題", "標題文字", "標題在這裡", "title", "heading", "TODO", "TBD")
 
     # Only match block titles that start with emoji and have actual Chinese content
     emoji_blocks = re.compile(r"^(🌸|📋|💭|🌙|📸|🎯|📍|💌|🔧|🌐|⛽)\s*(.+)$")
@@ -508,8 +509,14 @@ def extract_title_and_preview(content: str) -> Tuple[str, str]:
     for line in lines:
         m = emoji_blocks.match(line)
         if m:
-            if not title and m.group(2).strip():
-                title = m.group(2).strip()
+            candidate = m.group(2).strip()
+            if (
+                not title
+                and candidate
+                and len(candidate) > 1
+                and not any(p.lower() in candidate.lower() for p in placeholder_words)
+            ):
+                title = candidate
         elif line.startswith("- ") or line.startswith("• "):
             item = line[2:].strip()
             if item and len(preview_lines) < 2:
@@ -519,8 +526,7 @@ def extract_title_and_preview(content: str) -> Tuple[str, str]:
         elif not title and re.search(r"[\u4e00-\u9fff]", line):
             # Plain text line with Chinese, no emoji - might be opening paragraph
             # Skip lines that look like template placeholders
-            _placeholder_words = ("開頭", "開頭語", "標題", "標題文字", "標題在這裡", "title", "heading", "TODO", "TBD")
-            if len(line) > 5 and not any(p in line for p in _placeholder_words):
+            if len(line) > 5 and not any(p.lower() in line.lower() for p in placeholder_words):
                 title = line[:40]
         elif title and not line.startswith("-"):
             if len(preview_lines) < 2 and re.search(r"[\u4e00-\u9fff]", line):
