@@ -501,7 +501,21 @@ def extract_title_and_preview(content: str) -> Tuple[str, str]:
     lines = [l.strip() for l in content.split("\n") if l.strip()]
     title = None
     preview_lines = []
-    placeholder_words = ("開頭", "開頭語", "標題", "標題文字", "標題在這裡", "title", "heading", "TODO", "TBD")
+    placeholder_words = (
+        "開頭",
+        "開頭語",
+        "標題",
+        "標題文字",
+        "標題在這裡",
+        "今天最有感的一件事",
+        "今日軌跡",
+        "小小心得",
+        "結語",
+        "title",
+        "heading",
+        "TODO",
+        "TBD",
+    )
 
     # Only match block titles that start with emoji and have actual Chinese content
     emoji_blocks = re.compile(r"^(🌸|📋|💭|🌙|📸|🎯|📍|💌|🔧|🌐|⛽)\s*(.+)$")
