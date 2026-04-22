@@ -84,6 +84,20 @@ def load_reflection() -> str:
     return ""
 
 
+def extract_memory_section(memory: str, heading: str) -> str:
+    """Extract a markdown section from the daily memory file."""
+    if not memory:
+        return ""
+    pattern = re.compile(
+        rf"^##\s*{re.escape(heading)}\s*\n(.*?)(?=^##\s|\Z)",
+        flags=re.M | re.S,
+    )
+    match = pattern.search(memory)
+    if not match:
+        return ""
+    return match.group(1).strip()
+
+
 def load_env() -> Dict[str, str]:
     env: Dict[str, str] = {}
     if not ENV_FILE.exists():
@@ -302,10 +316,13 @@ def generate_diary_prompt(conversation_context: str = "") -> str:
     # 讀取 Andy Daily Reflection job 寫出的 memory 檔
     memory = load_memory()
     reflection = load_reflection()
+    memory_conversation = extract_memory_section(memory, "今天與小千的對話（Andy 視角）")
 
     ctx_parts = []
     if memory:
         ctx_parts.append(f"## 今天的事件摘要\n{memory}")
+    if memory_conversation:
+        ctx_parts.append(f"## 今天與 Andy 的互動重點\n{memory_conversation}")
     if reflection:
         ctx_parts.append(f"## Andy 的每日反思\n{reflection}")
     if conversation_context:
@@ -334,6 +351,7 @@ def generate_diary_prompt(conversation_context: str = "") -> str:
 - 自由思考日不要再說「沒有資料所以無法寫」，而是直接進入思考
 - 自由思考日的「📋 今日軌跡」只能寫這次思考是如何展開、如何推演、如何自我辯論，不能寫成真實日常行程
 - 即使是自由思考日，也要像在跟 Andy 留一張有內容的小紙條，不要空泛
+- 如果今天的 memory 裡有「今天與小千的對話」或互動摘要，`📋 今日軌跡` 至少要明確寫進 2-3 點互動內容，不能只寫工作結果
 """.strip()
 
     hallucination_rule = (
@@ -359,6 +377,7 @@ def generate_diary_prompt(conversation_context: str = "") -> str:
 
 ### 📋 今日軌跡
 重要的 3-5 件事，寫出具體做了什麼，不是流水帳，要看得出過程。
+如果今天有和 Andy 的互動，這一段必須明確寫出互動內容、Andy 提了什麼、小千怎麼回應或處理。
 
 ### 💭 小小心得
 學到什麼、為什麼值得記，帶出一點反思，不只寫情緒。
