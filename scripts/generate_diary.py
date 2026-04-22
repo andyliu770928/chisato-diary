@@ -7,6 +7,7 @@ import html
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
 from datetime import datetime
@@ -20,6 +21,10 @@ BASE_DIR = Path("/Users/aliu/MEGA/openclaw/diary")
 ASSETS_DIR = BASE_DIR / "assets"
 OUTPUT_DIR = BASE_DIR
 MEMORY_DIR = BASE_DIR / "memory"
+LOG_DIR = BASE_DIR / "logs"
+STATE_DIR = BASE_DIR / "state"
+LOCK_DIR = STATE_DIR / "diary.lock"
+STATE_FILE = STATE_DIR / "last-run.json"
 ENV_FILE = Path("/Users/aliu/.hermes/.env")
 WEEKDAY = ["週一", "週二", "週三", "週四", "週五", "週六", "週日"]
 
@@ -30,11 +35,83 @@ MINIMAX_TEXT_MODELS = [
     "MiniMax-M2.5",
     "MiniMax-M2.1",
 ]
+MODEL_TIMEOUT_SECONDS = int(os.environ.get("CHISATO_DIARY_MODEL_TIMEOUT_SECONDS", "90"))
+GIT_TIMEOUT_SECONDS = int(os.environ.get("CHISATO_DIARY_GIT_TIMEOUT_SECONDS", "60"))
 
 
 def log(message: str) -> None:
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{timestamp}] {message}", flush=True)
+
+
+def ensure_runtime_dirs() -> None:
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def write_state(status: str, **fields: object) -> None:
+    ensure_runtime_dirs()
+    payload = {
+        "date": TARGET_DATE,
+        "status": status,
+        "updatedAt": datetime.now().isoformat(timespec="seconds"),
+    }
+    payload.update(fields)
+    STATE_FILE.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _pid_is_running(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def acquire_lock() -> None:
+    ensure_runtime_dirs()
+    if LOCK_DIR.exists():
+        pid_file = LOCK_DIR / "pid"
+        pid = None
+        if pid_file.exists():
+            try:
+                pid = int(pid_file.read_text(encoding="utf-8").strip())
+            except ValueError:
+                pid = None
+        if pid and _pid_is_running(pid):
+            raise RuntimeError(f"Diary lock exists (pid={pid})")
+        for child in LOCK_DIR.iterdir():
+            child.unlink()
+        LOCK_DIR.rmdir()
+        log("清除 stale diary lock")
+    LOCK_DIR.mkdir(parents=True, exist_ok=False)
+    (LOCK_DIR / "pid").write_text(str(os.getpid()), encoding="utf-8")
+    (LOCK_DIR / "started_at").write_text(
+        datetime.now().isoformat(timespec="seconds"),
+        encoding="utf-8",
+    )
+
+
+def release_lock() -> None:
+    if not LOCK_DIR.exists():
+        return
+    for child in LOCK_DIR.iterdir():
+        child.unlink()
+    LOCK_DIR.rmdir()
+
+
+def install_signal_handlers() -> None:
+    def _handle_signal(signum, _frame) -> None:
+        signal_name = signal.Signals(signum).name
+        write_state("failed", error=f"terminated by signal {signal_name}")
+        release_lock()
+        raise SystemExit(128 + signum)
+
+    signal.signal(signal.SIGTERM, _handle_signal)
+    signal.signal(signal.SIGINT, _handle_signal)
 
 
 def resolve_target_date(raw_date: str | None = None) -> datetime:
@@ -441,7 +518,7 @@ def generate_diary_with_minimax(prompt: str) -> Tuple[str, str]:
                     "Content-Type": "application/json",
                 },
                 json=payload,
-                timeout=90,
+                timeout=MODEL_TIMEOUT_SECONDS,
             )
             response.raise_for_status()
             data = response.json()
@@ -477,7 +554,7 @@ def generate_diary_with_openai(prompt: str) -> Tuple[str, str]:
             "Content-Type": "application/json",
         },
         json=payload,
-        timeout=90,
+        timeout=MODEL_TIMEOUT_SECONDS,
     )
     response.raise_for_status()
     data = response.json()
@@ -673,21 +750,30 @@ def push_to_github() -> None:
             ["git", "diff", "--cached", "--quiet"],
             cwd=OUTPUT_DIR,
             capture_output=True,
+            timeout=GIT_TIMEOUT_SECONDS,
         )
         if diff_result.returncode != 0:
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
             subprocess.run(
                 ["git", "commit", "-m", f"Diary: {TARGET_DATE}\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"],
                 cwd=OUTPUT_DIR,
                 check=True,
                 capture_output=True,
+                timeout=GIT_TIMEOUT_SECONDS,
             )
-            subprocess.run(["git", "push"], cwd=OUTPUT_DIR, check=True, capture_output=True)
+            subprocess.run(
+                ["git", "push"],
+                cwd=OUTPUT_DIR,
+                check=True,
+                capture_output=True,
+                timeout=GIT_TIMEOUT_SECONDS,
+            )
             log("✅ Diary pushed to GitHub")
         else:
             log("No changes to push")
     except subprocess.CalledProcessError as exc:
         log(f"Git push failed: {exc}")
+    except subprocess.TimeoutExpired as exc:
+        log(f"Git operation timed out: {exc}")
 
 
 def diary_public_url() -> str:
@@ -700,6 +786,7 @@ def archive_public_url() -> str:
 
 def generate_diary(user_request: str = None) -> Tuple[str, str, str, str]:
     log(f"=== 開始產生小千日記：{TARGET_DATE} ===")
+    write_state("running", startedAt=datetime.now().isoformat(timespec="seconds"))
 
     prompt = generate_diary_prompt().format(date=TARGET_DATE, weekday=WEEKDAY_STR)
 
@@ -723,17 +810,27 @@ def generate_diary(user_request: str = None) -> Tuple[str, str, str, str]:
 
     title, _diary_file = save_diary(diary_content, photo_filename)
     push_to_github()
+    write_state(
+        "completed",
+        title=title,
+        provider=provider_used,
+        diaryUrl=diary_public_url(),
+        archiveUrl=archive_public_url(),
+        photoFilename=published_photo_filename if (published_photo_filename := (f"xiaoxia-{TARGET_DATE}.png" if photo_filename else None)) else None,
+    )
 
     return diary_content, title, diary_public_url(), archive_public_url()
 
 
 def main() -> int:
+    install_signal_handlers()
     user_request = None
     # Allow passing user request via first argument
     if len(sys.argv) > 1:
         user_request = sys.argv[1]
 
     try:
+        acquire_lock()
         diary_content, title, public_url, archive_url = generate_diary(user_request)
         try:
             send_telegram_text(
@@ -749,6 +846,7 @@ def main() -> int:
     except Exception as exc:
         error_message = f"{type(exc).__name__}: {exc}"
         log(f"❌ 日記生成失敗：{error_message}")
+        write_state("failed", error=error_message)
         try:
             send_telegram_text(
                 "Andy，小千今天的日記生成失敗。"
@@ -759,6 +857,8 @@ def main() -> int:
             log(f"Telegram 失敗通知也失敗：{notify_exc}")
         print(f"錯誤：{error_message}", file=sys.stderr)
         return 1
+    finally:
+        release_lock()
 
 
 if __name__ == "__main__":
