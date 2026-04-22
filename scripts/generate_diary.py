@@ -150,6 +150,8 @@ def clean_model_output(text: str) -> str:
     """Remove markdown code blocks from model output."""
     text = re.sub(r"```(?:markdown|zh|)\s*\n?", "", text, flags=re.S | re.I).strip()
     text = re.sub(r"```\s*\n?", "", text, flags=re.S | re.I).strip()
+    text = re.sub(r"<think>[\s\S]*?</think>", "", text, flags=re.I).strip()
+    text = re.sub(r"<\/?think>", "", text, flags=re.I).strip()
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     return text
 
@@ -352,6 +354,8 @@ def generate_diary_prompt(conversation_context: str = "") -> str:
 - 自由思考日的「📋 今日軌跡」只能寫這次思考是如何展開、如何推演、如何自我辯論，不能寫成真實日常行程
 - 即使是自由思考日，也要像在跟 Andy 留一張有內容的小紙條，不要空泛
 - 如果今天的 memory 裡有「今天與小千的對話」或互動摘要，`📋 今日軌跡` 至少要明確寫進 2-3 點互動內容，不能只寫工作結果
+- 如果提供了「今天與 Andy 的互動重點」，請優先使用那一段，不要只改寫上方總結；應直接提到 Andy 問了什麼、提供了什麼、小千怎麼回應
+- 若互動重點裡同時有工具、資料來源或使用者回饋，`📋 今日軌跡` 至少要涵蓋其中 3 項具體細節
 """.strip()
 
     hallucination_rule = (
