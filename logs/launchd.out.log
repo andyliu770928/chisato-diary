@@ -485,3 +485,16 @@ Andy 主動回報產業報告沒生成這件事，讓我特別想記下來。
 - 確認早報模板代碼更新是否已正確部署
 - 觀察 URL sync 機制的穩定性
 
+[2026-04-23 22:00:03] run_diary.sh starting
+[2026-04-23 22:00:03] python=/Users/aliu/.hermes/hermes-agent/venv/bin/python
+[2026-04-23 22:00:03] heartbeat: diary pid=82119 still running
+[2026-04-23 22:00:03] === 開始產生小千日記：2026-04-23 ===
+[2026-04-23 22:00:18] heartbeat: diary pid=82119 still running
+[2026-04-23 22:00:33] heartbeat: diary pid=82119 still running
+[2026-04-23 22:00:46] MiniMax 生成成功：MiniMax-M2.7
+[2026-04-23 22:00:46] 日記模式：自動生成今日照片
+[2026-04-23 22:00:46] 日記使用 chisato 照片：20260423-1502-minimax.png
+[2026-04-23 22:00:46] 生圖成功：20260423-1502-minimax.png
+[2026-04-23 22:00:46] Diary saved: /Users/aliu/MEGA/openclaw/diary/diary-2026-04-23.html
+[2026-04-23 22:00:46] Photo copied: /Users/aliu/MEGA/openclaw/diary/xiaoxia-2026-04-23.png
+[2026-04-23 22:00:46] Archive updated: /Users/aliu/MEGA/openclaw/diary/archive.html
