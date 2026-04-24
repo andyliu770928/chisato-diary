@@ -34,6 +34,11 @@ OPENAI_API_KEY=...
 
 ## 維護備忘
 
+- 排程原則：以後正式自動執行一律使用 Hermes cron。
+  - 不要再把日記切回 `launchd`
+  - 若只為了排程而新增 `launchd`，視為違反維運原則
+  - `launchd` 最多只能用於臨時診斷，不能作為正式來源
+
 - 2026-04-23 曾發生日記完成通知送兩次。
   - 根因是 Hermes cron 與 `ai.chisato.diary` launchd 都排在 `22:00`，兩邊各跑一次。
   - 目前已停用 launchd，只保留 Hermes cron。
