@@ -37,6 +37,7 @@ MINIMAX_TEXT_MODELS = [
 ]
 MODEL_TIMEOUT_SECONDS = int(os.environ.get("CHISATO_DIARY_MODEL_TIMEOUT_SECONDS", "90"))
 GIT_TIMEOUT_SECONDS = int(os.environ.get("CHISATO_DIARY_GIT_TIMEOUT_SECONDS", "60"))
+FORCE_RUN = os.environ.get("CHISATO_DIARY_FORCE", "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def log(message: str) -> None:
@@ -61,6 +62,17 @@ def write_state(status: str, **fields: object) -> None:
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+
+
+def load_state() -> Dict[str, object]:
+    ensure_runtime_dirs()
+    if not STATE_FILE.exists():
+        return {}
+    try:
+        payload = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+        return payload if isinstance(payload, dict) else {}
+    except Exception:
+        return {}
 
 
 def _pid_is_running(pid: int) -> bool:
@@ -93,6 +105,22 @@ def acquire_lock() -> None:
         datetime.now().isoformat(timespec="seconds"),
         encoding="utf-8",
     )
+
+
+def should_skip_auto_run() -> bool:
+    if FORCE_RUN:
+        return False
+    state = load_state()
+    if state.get("date") != TARGET_DATE:
+        return False
+    status = str(state.get("status", "")).strip().lower()
+    if status == "completed":
+        log(f"今日日記已完成，略過重複 auto-run：{TARGET_DATE}")
+        return True
+    if status == "running":
+        log(f"今日日記仍在執行中，略過重複 auto-run：{TARGET_DATE}")
+        return True
+    return False
 
 
 def release_lock() -> None:
@@ -828,6 +856,10 @@ def main() -> int:
     # Allow passing user request via first argument
     if len(sys.argv) > 1:
         user_request = sys.argv[1]
+    auto_run = user_request is None
+
+    if auto_run and should_skip_auto_run():
+        return 0
 
     try:
         acquire_lock()
@@ -844,6 +876,9 @@ def main() -> int:
         print(f"\n=== 小千的日記 {TARGET_DATE} ===\n{diary_content}\n")
         return 0
     except Exception as exc:
+        if auto_run and isinstance(exc, RuntimeError) and str(exc).startswith("Diary lock exists"):
+            log(f"偵測到既有日記流程，略過重複 auto-run：{exc}")
+            return 0
         error_message = f"{type(exc).__name__}: {exc}"
         log(f"❌ 日記生成失敗：{error_message}")
         write_state("failed", error=error_message)
