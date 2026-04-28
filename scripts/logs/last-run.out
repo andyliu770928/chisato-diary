@@ -1,14 +1,14 @@
-[2026-04-27 22:01:00] run_diary.sh starting
-[2026-04-27 22:01:00] python=/Users/aliu/.hermes/hermes-agent/venv/bin/python
-[2026-04-27 22:01:00] heartbeat: diary pid=32077 still running
-[2026-04-27 22:01:00] === 開始產生小千日記：2026-04-27 ===
-[2026-04-27 22:01:15] heartbeat: diary pid=32077 still running
-[2026-04-27 22:01:31] heartbeat: diary pid=32077 still running
-[2026-04-27 22:01:46] heartbeat: diary pid=32077 still running
-[2026-04-27 22:01:58] MiniMax 生成成功：MiniMax-M2.7
-[2026-04-27 22:01:58] 日記模式：自動生成今日照片
-[2026-04-27 22:01:59] 日記使用 chisato 照片：20260427-1501-minimax.png
-[2026-04-27 22:01:59] 生圖成功：20260427-1501-minimax.png
-[2026-04-27 22:01:59] Diary saved: /Users/aliu/MEGA/openclaw/diary/diary-2026-04-27.html
-[2026-04-27 22:01:59] Photo copied: /Users/aliu/MEGA/openclaw/diary/xiaoxia-2026-04-27.png
-[2026-04-27 22:01:59] Archive updated: /Users/aliu/MEGA/openclaw/diary/archive.html
+[2026-04-28 22:01:02] run_diary.sh starting
+[2026-04-28 22:01:02] python=/Users/aliu/.hermes/hermes-agent/venv/bin/python
+[2026-04-28 22:01:02] heartbeat: diary pid=44036 still running
+[2026-04-28 22:01:03] === 開始產生小千日記：2026-04-28 ===
+[2026-04-28 22:01:18] heartbeat: diary pid=44036 still running
+[2026-04-28 22:01:33] heartbeat: diary pid=44036 still running
+[2026-04-28 22:01:48] heartbeat: diary pid=44036 still running
+[2026-04-28 22:01:58] MiniMax 生成成功：MiniMax-M2.7
+[2026-04-28 22:01:58] 日記模式：自動生成今日照片
+[2026-04-28 22:01:58] 日記使用 chisato 照片：20260428-1502-minimax.png
+[2026-04-28 22:01:58] 生圖成功：20260428-1502-minimax.png
+[2026-04-28 22:01:58] Diary saved: /Users/aliu/MEGA/openclaw/diary/diary-2026-04-28.html
+[2026-04-28 22:01:58] Photo copied: /Users/aliu/MEGA/openclaw/diary/xiaoxia-2026-04-28.png
+[2026-04-28 22:01:58] Archive updated: /Users/aliu/MEGA/openclaw/diary/archive.html
