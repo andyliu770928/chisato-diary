@@ -1,18 +1,13 @@
-[2026-05-13 22:01:08] run_diary.sh starting
-[2026-05-13 22:01:08] python=/Users/aliu/.hermes/hermes-agent/venv/bin/python
-[2026-05-13 22:01:08] heartbeat: diary pid=38419 still running
-[2026-05-13 22:01:08] === 開始產生小千日記：2026-05-13 ===
-[2026-05-13 22:01:23] heartbeat: diary pid=38419 still running
-[2026-05-13 22:01:38] heartbeat: diary pid=38419 still running
-[2026-05-13 22:01:53] heartbeat: diary pid=38419 still running
-[2026-05-13 22:02:08] heartbeat: diary pid=38419 still running
-[2026-05-13 22:02:23] heartbeat: diary pid=38419 still running
-[2026-05-13 22:02:39] heartbeat: diary pid=38419 still running
-[2026-05-13 22:02:39] MiniMax 模型失敗，改試下一個：MiniMax-M2.7: HTTPSConnectionPool(host='api.minimax.io', port=443): Read timed out. (read timeout=90)
-[2026-05-13 22:02:48] MiniMax 生成成功：MiniMax-M2.5
-[2026-05-13 22:02:48] 日記模式：自動生成今日照片
-[2026-05-13 22:02:48] 日記使用 chisato 照片：20260513-1502-minimax.png
-[2026-05-13 22:02:48] 生圖成功：20260513-1502-minimax.png
-[2026-05-13 22:02:48] Diary saved: /Users/aliu/MEGA/openclaw/diary/diary-2026-05-13.html
-[2026-05-13 22:02:48] Photo copied: /Users/aliu/MEGA/openclaw/diary/xiaoxia-2026-05-13.png
-[2026-05-13 22:02:48] Archive updated: /Users/aliu/MEGA/openclaw/diary/archive.html
+[2026-05-14 22:00:52] run_diary.sh starting
+[2026-05-14 22:00:52] python=/Users/aliu/.hermes/hermes-agent/venv/bin/python
+[2026-05-14 22:00:52] heartbeat: diary pid=50926 still running
+[2026-05-14 22:00:52] === 開始產生小千日記：2026-05-14 ===
+[2026-05-14 22:01:07] heartbeat: diary pid=50926 still running
+[2026-05-14 22:01:22] heartbeat: diary pid=50926 still running
+[2026-05-14 22:01:33] MiniMax 生成成功：MiniMax-M2.7
+[2026-05-14 22:01:33] 日記模式：自動生成今日照片
+[2026-05-14 22:01:33] 日記使用 chisato 照片：20260514-1501-minimax.png
+[2026-05-14 22:01:33] 生圖成功：20260514-1501-minimax.png
+[2026-05-14 22:01:33] Diary saved: /Users/aliu/MEGA/openclaw/diary/diary-2026-05-14.html
+[2026-05-14 22:01:33] Photo copied: /Users/aliu/MEGA/openclaw/diary/xiaoxia-2026-05-14.png
+[2026-05-14 22:01:33] Archive updated: /Users/aliu/MEGA/openclaw/diary/archive.html
