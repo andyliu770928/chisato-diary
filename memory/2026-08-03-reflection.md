@@ -1,0 +1,1 @@
+今日與 Andy 無任何互動。Andy 自 6/6 造紙產業報告後，已連續近兩個月無主動指令，系統持續自動化運作。累積待追蹤項目無新增：TAVILY_API_KEY 未設定、generate_diary.py hallucination 問題、FSC ETF 報告未更新、Telegram Bot 401 Unauthorized 仍未解決。明日建議：主動發訊確認 Andy 狀態，或推送造紙報告後續追蹤以重啟互動。

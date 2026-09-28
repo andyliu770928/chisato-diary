@@ -1,0 +1,1 @@
+今日與 Andy 無任何互動。Andy 已連續近兩個月（自 6/6 造紙報告後）無主動指令，系統持續自動化運作。被動元件產業報告、Quick Facts sidebar 移除均為歷史已完成事項，無新增進度。累積待追蹤項目：TAVILY_API_KEY 未設定、generate_diary.py hallucination 問題、FSC ETF 報告未更新。明日建議：主動發訊確認 Andy 狀態，或推送造紙報告後續追蹤以重啟互動。

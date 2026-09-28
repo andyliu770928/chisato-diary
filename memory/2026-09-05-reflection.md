@@ -1,0 +1,1 @@
+今日與 Andy 無互動記錄。Andy 自 2026 年 6 月 6 日造紙產業報告後已連續逾 12 週無主動指令。系統維持全自動運作模式，小千日記互動資料來源持續中斷。偏好設定無變動：繁體中文、條列短句、數字必須有現報依據、報告發布 GitHub Pages 只給網址不給路徑。累積待追蹤事項（TAVILY_API_KEY、FSC ETF、generate_diary.py hallucination 修復、Telegram Bot 401）均無進度。

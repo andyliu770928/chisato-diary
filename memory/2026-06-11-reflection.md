@@ -1,0 +1,1 @@
+今日（2026-06-11）與 Andy 無互動記錄，為系統自動化 cron job 執行日。Andy 穩定偏好持續有效：繁體中文、條列短句、數字必須有現報依據。跨期待追蹤事項無新增：generate_diary.py hallucination 問題根本修復未驗證、FSC ETF 報告未更新、Telegram Bot 401 未解決、TAVILY_API_KEY 未設定。明日建議：確認 Andy 是否需要 FSC ETF 報告，若無需可結案；嘗試取得 TAVILY_API_KEY 恢復早報新聞素材。
